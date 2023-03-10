@@ -6,16 +6,16 @@ phases:
   pre_build:
     commands:
       - |
-      if ! command -v aws &> /dev/null; then
-        echo Sync latest image from Amazon ECR Public Gallery
-        curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-        unzip awscliv2.zip
-        ./aws/install
-        which aws
-        ls -l /root/.pyenv/shims/aws || ls -l /usr/local/bin/aws
-        ./aws/install --bin-dir /root/.pyenv/shims --install-dir /root/.pyenv/shims --update
-      fi
-      aws --version
+        if ! command -v aws &> /dev/null; then
+          echo Sync latest image from Amazon ECR Public Gallery
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          unzip awscliv2.zip
+          ./aws/install
+          which aws
+          ls -l /root/.pyenv/shims/aws || ls -l /usr/local/bin/aws
+          ./aws/install --bin-dir /root/.pyenv/shims --install-dir /root/.pyenv/shims --update
+        fi
+        aws --version
   build:
     commands:
       # Enforce STS regional endpoints

@@ -6,7 +6,7 @@ phases:
   pre_build:
     commands:
       - |
-        if ! command -v aws &> /dev/null; then
+        if ! [ -x "$(command -v aws)" ]; then
           echo Sync latest image from Amazon ECR Public Gallery
           curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
           unzip awscliv2.zip

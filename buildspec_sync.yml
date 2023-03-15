@@ -20,7 +20,7 @@ phases:
       - './scripts/publish.sh cicd-publish ${AWS_REGION} stable' 
 
       # Publish stable tag to Dockerhub when AWS_REGION is us-west-2
-      - './scripts/publish.sh cicd-publish public-dockerhub-stable ${AWS_REGION}'
+      # - './scripts/publish.sh cicd-publish public-dockerhub-stable ${AWS_REGION}'
       
       # Assume role to publish, get the credentials, and set them as environment variables
       - |
@@ -32,7 +32,7 @@ phases:
         fi
       
       # Publish stable tag to Public ECR when AWS_REGION is us-west-2
-      - './scripts/publish.sh cicd-publish public-ecr-stable ${AWS_REGION}'
+      # - './scripts/publish.sh cicd-publish public-ecr-stable ${AWS_REGION}'
 
       # Nullify the temporary credentials for the assumed role to publish
       - |
@@ -60,7 +60,7 @@ phases:
       - export AWS_SESSION_TOKEN=
 
       # Verify the publishing on Public ECR and Dockerhub when AWS_REGION is us-west-2
-      - './scripts/publish.sh cicd-verify stable ${AWS_REGION}'
+      # - './scripts/publish.sh cicd-verify stable ${AWS_REGION}'
 artifacts:
   files:
     - '**/*'

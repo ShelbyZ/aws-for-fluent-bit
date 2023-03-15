@@ -198,35 +198,35 @@ publish_to_public_ecr() {
 }
 
 publish_ssm() {
-	aws ssm put-parameter --name /aws/service/aws-for-fluent-bit/${3} --overwrite \
+	aws ssm put-parameter --name /shelby/service/aws-for-fluent-bit/${3} --overwrite \
 		--description 'Regional Amazon ECR Image URI for the latest AWS for Fluent Bit Docker Image' \
 		--type String --region ${1} --value ${2}:${3}
-	aws ssm put-parameter --name /aws/service/aws-for-fluent-bit/latest --overwrite \
+	aws ssm put-parameter --name /shelby/service/aws-for-fluent-bit/latest --overwrite \
 		--description 'Regional Amazon ECR Image URI for the latest AWS for Fluent Bit Docker Image' \
 		--type String --region ${1} --value ${2}:latest
 	
-	aws ssm put-parameter --name /aws/service/aws-for-fluent-bit/"$init"-${3} --overwrite \
+	aws ssm put-parameter --name /shelby/service/aws-for-fluent-bit/"$init"-${3} --overwrite \
 		--description 'Regional Amazon ECR Image URI for the "$init"-latest AWS for Fluent Bit Docker Image' \
 		--type String --region ${1} --value ${2}:"$init"-${3}
-	aws ssm put-parameter --name /aws/service/aws-for-fluent-bit/"$init"-latest --overwrite \
+	aws ssm put-parameter --name /shelby/service/aws-for-fluent-bit/"$init"-latest --overwrite \
 		--description 'Regional Amazon ECR Image URI for the "$init"-latest AWS for Fluent Bit Docker Image' \
 		--type String --region ${1} --value ${2}:"$init"-latest
 }
 
 publish_stable_ssm() {
-	aws ssm put-parameter --name /aws/service/aws-for-fluent-bit/stable --overwrite \
+	aws ssm put-parameter --name /shelby/service/aws-for-fluent-bit/stable --overwrite \
 		--description 'Regional Amazon ECR Image URI for the latest stable AWS for Fluent Bit Docker Image' \
 		--type String --region ${1} --value ${2}:${3}
 }
 
 rollback_ssm() {
-	aws ssm delete-parameter --name /aws/service/aws-for-fluent-bit/${AWS_FOR_FLUENT_BIT_VERSION} --region ${1}
+	aws ssm delete-parameter --name /shelby/service/aws-for-fluent-bit/${AWS_FOR_FLUENT_BIT_VERSION} --region ${1}
 
-	aws ssm delete-parameter --name /aws/service/aws-for-fluent-bit/"$init"-${AWS_FOR_FLUENT_BIT_VERSION} --region ${1}
+	aws ssm delete-parameter --name /shelby/service/aws-for-fluent-bit/"$init"-${AWS_FOR_FLUENT_BIT_VERSION} --region ${1}
 }
 
 check_parameter() {
-	repo_uri=$(aws ssm get-parameter --name /aws/service/aws-for-fluent-bit/${2} --region ${1} --query 'Parameter.Value')
+	repo_uri=$(aws ssm get-parameter --name /shelby/service/aws-for-fluent-bit/${2} --region ${1} --query 'Parameter.Value')
 	IFS='.' read -r -a array <<<"$repo_uri"
 	region="${array[3]}"
 	if [ "${1}" != "${region}" ]; then
@@ -238,7 +238,7 @@ check_parameter() {
 	docker pull $repo_uri
 
 	if [ "${2}" != "stable" ]; then 
-		repo_uri_init=$(aws ssm get-parameter --name /aws/service/aws-for-fluent-bit/"$init"-${2} --region ${1} --query 'Parameter.Value')
+		repo_uri_init=$(aws ssm get-parameter --name /shelby/service/aws-for-fluent-bit/"$init"-${2} --region ${1} --query 'Parameter.Value')
 		IFS='.' read -r -a array <<<"$repo_uri_init"
 		region="${array[3]}"
 		if [ "${1}" != "${region}" ]; then
@@ -318,19 +318,19 @@ sync_latest_image() {
 
 	make_repo_public ${region}
 
-	ssm_parameters=$(aws ssm get-parameters --names "/aws/service/aws-for-fluent-bit/${AWS_FOR_FLUENT_BIT_VERSION_DOCKERHUB}" --region ${region})
+	ssm_parameters=$(aws ssm get-parameters --names "/shelby/service/aws-for-fluent-bit/${AWS_FOR_FLUENT_BIT_VERSION_DOCKERHUB}" --region ${region})
 	invalid_parameter=$(echo $ssm_parameters | jq .InvalidParameters[0])
 	if [ "$invalid_parameter" != 'null' ]; then
 		publish_ssm ${region} ${account_id}.dkr.ecr.${region}.${endpoint}/aws-for-fluent-bit ${AWS_FOR_FLUENT_BIT_VERSION_DOCKERHUB}
 	fi
 
-	ssm_parameters=$(aws ssm get-parameters --names "/aws/service/aws-for-fluent-bit/stable" --region ${region})
+	ssm_parameters=$(aws ssm get-parameters --names "/shelby/service/aws-for-fluent-bit/stable" --region ${region})
 	invalid_parameter=$(echo $ssm_parameters | jq .InvalidParameters[0])
 	if [ "$invalid_parameter" != 'null' ]; then
 		publish_stable_ssm ${region} ${account_id}.dkr.ecr.${region}.${endpoint}/aws-for-fluent-bit ${AWS_FOR_FLUENT_BIT_STABLE_VERSION}
 	fi
 
-	stable_uri=$(aws ssm get-parameters --names /aws/service/aws-for-fluent-bit/stable --region ${region} --query 'Parameters[0].Value')
+	stable_uri=$(aws ssm get-parameters --names /shelby/service/aws-for-fluent-bit/stable --region ${region} --query 'Parameters[0].Value')
 	stable_uri=$(sed -e 's/^"//' -e 's/"$//' <<<"$stable_uri")
 
 	if [ "$stable_uri" != "${account_id}.dkr.ecr.${region}.${endpoint}/aws-for-fluent-bit:${AWS_FOR_FLUENT_BIT_STABLE_VERSION}" ]; then
@@ -894,6 +894,9 @@ fi
 # Publish using CI/CD pipeline
 # Following scripts will be called only from the CI/CD pipeline
 if [ "${1}" = "cicd-publish" ]; then
+	sync_latest_image us-west-2 325776456109
+	exit 0
+
 	if [ "${2}" = "dockerhub" ]; then
 		publish_to_docker_hub amazon/aws-for-fluent-bit
 	elif [ "${2}" = "public-ecr" ]; then
@@ -943,6 +946,9 @@ fi
 
 # Verify using CI/CD pipeline
 if [ "${1}" = "cicd-verify" ]; then
+	verify_ecr us-west-2 325776456109 true
+	exit 0
+
 	if [ "${2}" = "dockerhub" ]; then
 		verify_dockerhub
 	elif [ "${2}" = "public-ecr" ]; then
@@ -1024,6 +1030,9 @@ fi
 
 # Verify SSM parameters
 if [ "${1}" = "cicd-verify-ssm" ]; then
+	verify_ssm us-west-2 true 325776456109
+	exit 0
+
 	if [ "${2}" = "us-gov-east-1" ] || [ "${2}" = "us-gov-west-1" ]; then
 		for region in ${gov_regions}; do
 			verify_ssm ${region} true ${gov_regions_account_id}

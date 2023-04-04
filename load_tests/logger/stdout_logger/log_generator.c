@@ -4,10 +4,21 @@
 #include <sys/time.h>
 #include <errno.h>    
 #include <unistd.h>
+#include <string.h>
+#include <math.h>
 
 // Large text around 1Kb
-#define ONE_KB_TEXT "RUDQEWDDKBVMHPYVOAHGADVQGRHGCNRDCTLUWQCBFBKFGZHTGEUKFXWNCKXPRWBSVJGHEARMDQGVVRFPVCIBYEORHYPUTQJKUMNZJXIYLDCJUHABJIXFPUNJQDORGPKWFLQZXIGVGCWTZCVWGBFSGVXGEITYKNTWCYZDOAZFOTXDOFRPECXBSCSORSUUNUJZEJZPTODHBXVMOETBRFGNWNZHGINVNYZPKKSFLZHLSSDHFGLTHZEKICPGNYSCTAIHARDDYIJHKLMAOIDLEKRXMFNVJOJVDFYKNVIQKCIGTRFWKJRHQSFDWWKTJNMNKFBOMBMZMRCOHPUFZEPTQTZBLBDBZPJJXRYDFSOWKDVZLZYWSJYFTCKQJFPQOMCWQHKLNHUGWWVBGTRLLVUHTPHTKNBSRUNNOIFGIJPBHPCKYXNGDCQYJEWFFKRRTHJDUBEZPJIXMAOLZQDZQAYEUZFRLTLTXNGAVAGZZDUERZWTJVDTXPKOIRTCKTFOFJAXVFLNKPBYOIYVPHUYBRZZORCEMMAUTZIAUSXVDTKHSUIRTSYWQMYZBMUGSATXPNESEVQMUKHYZFWSLHJDNYUQWOKDUTUKPRXBLIYGSCFGBGXATINMMCWNWBGJTLZTPKGBTPWTHQPUHDJITWPCJLGZFNZTCIEWWVTREFCTPVOUADQCRQCBRHNHDKGQIXHIWGGDGAAFYZRODKFTKQATAUDOMZTSQUYZHGNJOBSUJDHESPBOIJCGXPEZMMQJNFTYBJEYXPZAZICZJKEZKCZEUMZTTSQEHADOVMCDMDEBUJAPKIAEYQEWIYZSAYAWAGFSTBJYCUFZHMJMLCTVTZWGCPDAURQYSXVICLVWKPAOMVTQTESYFPTMNMSNZPUXMDJRDKHDRAIRYELEXRJUAMOLZVWNHGNVFETVUDZEIDJRPSHMXAZDZXDCXMUJTPDTDUHBAZGPIQOUNUHMVLCZCSUUHGTE"
-#define RUNNING_IN_SECOND 3600
+#define ONE_KB_TEXT "RUDQEWDDKBVMHPYVOAHGADVQGRHGCNRDCTLUWQCBFBKFGZHTGEUKFXWNCKXPRWBSVJGHEARMDQGVVRFPVCIBYEORHYPUTQJKUMNZJXIYLDCJUHABJIXFPUNJQDORGPKWFLQZXIGVGCWTZCVWGBFSGVXGEITYKNTWCYZDOAZFOTXDOFRPECXBSCSORSUUNUJZEJZPTODHBXVMOETBRFGNWNZHGINVNYZPKKSFLZHLSSDHFGLTHZEKICPGNYSCTAIHARDDYIJHKLMAOIDLEKRXMFNVJOJVDFYKNVIQKCIGTRFWKJRHQSFDWWKTJNMNKFBOMBMZMRCOHPUFZEPTQTZBLBDBZPJJXRYDFSOWKDVZLZYWSJYFTCKQJFPQOMCWQHKLNHUGWWVBGTRLLVUHTPHTKNBSRUNNOIFGIJPBHPCKYXNGDCQYJEWFFKRRTHJDUBEZPJIXMAOLZQDZQAYEUZFRLTLTXNGAVAGZZDUERZWTJVDTXPKOIRTCKTFOFJAXVFLNKPBYOIYVPHUYBRZZORCEMMAUTZIAUSXVDTKHSUIRTSYWQMYZBMUGSATXPNESEVQMUKHYZFWSLHJDNYUQWOKDUTUKPRXBLIYGSCFGBGXATINMMCWNWBGJTLZTPKGBTPWTHQPUHDJITWPCJLGZFNZTCIEWWVTREFCTPVOUADQCRQCBRHNHDKGQIXHIWGGDGAAFYZRODKFTKQATAUDOMZTSQUYZHGNJOBSUJDHESPBOIJCGXPEZMMQJNFTYBJEYXPZAZICZJKEZKCZEUMZTTSQEHADOVMCDMDEBUJAPKIAEYQEWIYZSAYAWAGFSTBJYCUFZHMJMLCTVTZWGCPDAURQYSXVICLVWKPAOMVTQTESYFPTMNMSNZPUXMDJRDKHDRAIRYELEXRJUAMOLZVWNHGNVFETVUDZEIDJRPSHMXAZDZXDCXMUJTPDTDUHBAZGPIQOUNUHMVLCZCSUUHGTEIQOUNUHMVLCZCSUUHGTEIQOU"
+
+int getMessagesPerCycle(int throughput, float size, float burst)
+{
+    return ceil(throughput / size) * (60000 / (60000 - burst));
+}
+
+int getTimeBetweenCycle(int throughput, float size, float burst)
+{
+    return floor((size / throughput) * ((60000 - burst) / 60000)) * 1000;
+}
 
 long long timeInMilliseconds(void) {
     struct timeval tv;
@@ -35,30 +46,59 @@ void msleep(long msec)
     } while (res && errno == EINTR);
 }
 
-int main()  {
-    int t = atoi(getenv("TIME"));
-    int iteration = atoi(getenv("ITERATION"))*1000;
-    int i = 0;
-    int idCounter = 10000000;
+int main()
+{
+    int sizeInKb = atoi(getenv("SIZE_IN_KB"));
+    int totalSizeInKb = atoi(getenv("TOTAL_SIZE_IN_MB")) * 1024;
+    int throughputInKb = atoi(getenv("THROUGHPUT_IN_KB"));
+    int burstDelayInMs = atoi(getenv("BURST_DELAY_IN_SECONDS")) * 1000;
 
-    while (i < t) {
+    int idCounter = 10000000;
+    char* data = malloc(strlen(ONE_KB_TEXT) * sizeInKb + 1);
+
+    int totalMessages = totalSizeInKb / sizeInKb;
+    int messagesSent = 0;
+    int timeBetweenCycleInMs = getTimeBetweenCycle(throughputInKb, sizeInKb, burstDelayInMs);
+    int messagesPerSecond = getMessagesPerCycle(throughputInKb, sizeInKb, burstDelayInMs);
+    int burstDelayPerCycleInMs = burstDelayInMs / totalMessages;
+
+    // build log message size
+    for (int i = 0; i < sizeInKb; i++)
+    {
+        snprintf(&data[strlen(data)], strlen(ONE_KB_TEXT) + 1, "%s", ONE_KB_TEXT);
+    }
+
+    printf("sizeInKb: %d\n", sizeInKb);
+    printf("totalSizeInKb: %d\n", totalSizeInKb);
+    printf("throughputInKb: %d\n", throughputInKb);
+    printf("burstDelayInMs: %d\n", burstDelayInMs);
+    printf("timeBetweenCycleInMs: %d\n", timeBetweenCycleInMs);
+    printf("messagesPerSecond: %d\n", messagesPerSecond);
+    printf("totalMessages: %d\n", totalMessages);
+    printf("burstDelayPerCycleInMs: %d\n", burstDelayPerCycleInMs);
+
+    // send messages until total count reached
+    while (messagesSent < totalMessages)
+    {
         int j = 0;
         long long startSeconds;
         long long endSeconds;
         startSeconds = timeInMilliseconds();
-        while (j < iteration) {   
-            printf("%d_%lld_%s\n", idCounter, startSeconds, ONE_KB_TEXT);
-            idCounter=idCounter+1;
-            j=j+1;
-        }
-        i = i + 1;
-        endSeconds = timeInMilliseconds();
-        msleep(1000+startSeconds-endSeconds);
-    }
 
-    // Uncomment below two lines to Keep the generator running for 1 hour
-    // fflush(stdout);
-    // sleep(RUNNING_IN_SECOND);
+        while (j < messagesPerSecond && messagesSent < totalMessages) {
+            printf("%d_%lld_%s\n", idCounter, startSeconds, data);
+            idCounter++;
+            j++;
+            messagesSent++;
+        }
+
+        endSeconds = timeInMilliseconds();
+
+        if (messagesSent < totalMessages)
+        {
+            msleep(timeBetweenCycleInMs + burstDelayPerCycleInMs + startSeconds - endSeconds);
+        }
+    }
 
     return 0;
 }

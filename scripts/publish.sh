@@ -615,6 +615,7 @@ check_image_version() {
 
 	# echo "Approved release: release the image with a new version."
 	echo "Skipping image version check for testing"
+	echo Version under test: $(cat ../shelby_version)
 }
 
 verify_ecr_image_scan() {

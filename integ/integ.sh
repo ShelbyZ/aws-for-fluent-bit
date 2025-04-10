@@ -22,7 +22,7 @@ if [ -z "$S3_INTEG_VALIDATOR_IMAGE" ]; then
 fi
 
 test_cloudwatch() {
-	export LOG_GROUP_NAME="fluent-bit-integ-test-${ARCHITECTURE}"
+	export LOG_GROUP_NAME="fluent-bit-integ-test-${ARCHITECTURE}-${ECR_SUFFIX}"
 	# Tag is used to name the log stream; each test run has a unique (random) log stream name
 	export TAG=$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 10)
 	docker-compose --file ./integ/test_cloudwatch/docker-compose.test.yml build
@@ -39,7 +39,7 @@ test_cloudwatch() {
 }
 
 clean_cloudwatch() {
-	export LOG_GROUP_NAME="fluent-bit-integ-test-${ARCHITECTURE}"
+	export LOG_GROUP_NAME="fluent-bit-integ-test-${ARCHITECTURE}-${ECR_SUFFIX}"
 	# Clean up resources that were created in the test
 	docker-compose --file ./integ/test_cloudwatch/docker-compose.clean.yml build
 	docker-compose --file ./integ/test_cloudwatch/docker-compose.clean.yml up --abort-on-container-exit

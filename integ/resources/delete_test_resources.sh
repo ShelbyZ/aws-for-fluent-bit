@@ -5,4 +5,4 @@ ARCHITECTURE=$(uname -m | tr '_' '-')
 if [ "$ARCHITECTURE" = "aarch64" ]; then
     ARCHITECTURE="arm64"
 fi
-aws cloudformation delete-stack --stack-name integ-test-fluent-bit-${ARCHITECTURE}
+aws cloudformation delete-stack --stack-name integ-test-fluent-bit-${ARCHITECTURE}-${ECR_SUFFIX}

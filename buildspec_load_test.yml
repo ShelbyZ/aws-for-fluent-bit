@@ -4,17 +4,17 @@ env:
   variables: 
     THROUGHPUT_LIST: '["20m", "25m", "30m"]'
     CW_THROUGHPUT_LIST: '["1m", "2m", "3m"]'
-    TESTING_RESOURCES_STACK_NAME: 'load-test-fluent-bit-testing-resources-$ECR_SUFFIX'
-    LOG_STORAGE_STACK_NAME: 'load-test-fluent-bit-log-storage-$ECR_SUFFIX'
-    EKS_CLUSTER_NAME: 'load-test-fluent-bit-eks-cluster-$ECR_SUFFIX'
-    PREFIX: 'load-test-fluent-bit-$ECR_SUFFIX-'
+    TESTING_RESOURCES_STACK_NAME: 'load-test-fluent-bit-testing-resources'
+    LOG_STORAGE_STACK_NAME: 'load-test-fluent-bit-log-storage'
+    EKS_CLUSTER_NAME: 'load-test-fluent-bit-eks-cluster'
+    PREFIX: 'load-test-fluent-bit-'
 
 phases:
   install:
     runtime-versions:
       golang: 1.16
       python: 3.x
-      nodejs: 14
+      nodejs: 20
   pre_build:
     commands:
       - echo Running the load tests
@@ -48,6 +48,12 @@ phases:
       - aws configure set default.region us-west-2
   build:
     commands:
+      # mangle env variables with ECR_SUFFIX
+      - export TESTING_RESOURCES_STACK_NAME=${TESTING_RESOURCES_STACK_NAME}-${ECR_SUFFIX}
+      - export LOG_STORAGE_STACK_NAME=${LOG_STORAGE_STACK_NAME}-${ECR_SUFFIX}
+      - export EKS_CLUSTER_NAME=${EKS_CLUSTER_NAME}-${ECR_SUFFIX}
+      - export PREFIX=${PREFIX}${ECR_SUFFIX}-
+      - printenv
       # Activate Python virtual environment and install the AWS CDK core dependencies
       - python -m venv venv
       - source venv/bin/activate

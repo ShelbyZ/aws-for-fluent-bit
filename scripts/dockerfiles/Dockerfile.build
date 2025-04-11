@@ -1,7 +1,7 @@
 FROM public.ecr.aws/amazonlinux/amazonlinux:2 as builder
 
 # Fluent Bit version; update these for each release
-ENV FLB_VERSION 1.9.10
+ENV FLB_VERSION 3.2.10
 # branch to pull parsers from in github.com/fluent/fluent-bit-docker-image
 ENV FLB_DOCKER_BRANCH 1.8
 
@@ -76,26 +76,8 @@ FROM builder as compile
 
 # Get Fluent Bit source code
 WORKDIR /tmp/fluent-bit-$FLB_VERSION/
-RUN git clone https://github.com/amazon-contributing/upstream-to-fluent-bit.git /tmp/fluent-bit-$FLB_VERSION/
+RUN git clone --single-branch --branch 3.2 https://github.com/fluent/fluent-bit.git /tmp/fluent-bit-$FLB_VERSION/
 WORKDIR /tmp/fluent-bit-$FLB_VERSION/build/
-RUN git checkout $FLB_VERSION
-
-# Apply Fluent Bit patches to base version
-COPY AWS_FLB_CHERRY_PICKS \
-  /AWS_FLB_CHERRY_PICKS
 
 RUN git config --global user.email "aws-firelens@amazon.com" \
   && git config --global user.name "FireLens Team"
-
-RUN AWS_FLB_CHERRY_PICKS_COUNT=`awk '{print $0 }' /AWS_FLB_CHERRY_PICKS | sed '/^#/d' | sed '/^\s*$/d' | wc -l | awk '{ print $1 }'`; echo $AWS_FLB_CHERRY_PICKS_COUNT; \
-  if [ $AWS_FLB_CHERRY_PICKS_COUNT -gt 0 ]; \
-  then \
-    cat /AWS_FLB_CHERRY_PICKS | sed '/^#/d' \
-    | xargs -L1 bash -c 'git fetch $0 $1 && git cherry-pick $2 || exit 255' && \
-    \
-    (echo "Cherry Pick Patch Summary:"; \
-    echo -n "Base "; \
-    git log --oneline \
-    -$((AWS_FLB_CHERRY_PICKS_COUNT+1)) \
-    | tac | awk '{ print "Commit",NR-1,"--",$0 }'; sleep 2;)\
-  fi

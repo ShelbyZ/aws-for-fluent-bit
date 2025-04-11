@@ -28,11 +28,16 @@ class TestingResources(core.Stack):
             instance_type=ec2.InstanceType("c7a.24xlarge"),
             machine_image=ecs.EcsOptimizedImage.amazon_linux2(),
             require_imdsv2=True,
+            # Add the network interfaces configuration here
+            network_interfaces=[ec2.NetworkInterface(
+                associate_public_ip_address=True,
+                # The device index should be 0 for the primary network interface
+                device_index=0
+            )]
         )
 
         asg = autoscaling.AutoScalingGroup(
             self, "fleet",
-            associate_public_ip_address=True,
             launch_template=launch_template,
             desired_capacity=5,
             vpc=vpc,

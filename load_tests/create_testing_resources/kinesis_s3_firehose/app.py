@@ -85,5 +85,5 @@ class LogStorage(core.Stack):
                       description='S3 Bucket Name')
 
 app = core.App()
-LogStorage(app, 'load-test-fluent-bit-log-storage')
+LogStorage(app, os.environ.get('LOG_STORAGE_STACK_NAME'))
 app.synth()

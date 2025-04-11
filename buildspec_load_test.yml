@@ -4,10 +4,10 @@ env:
   variables: 
     THROUGHPUT_LIST: '["20m", "25m", "30m"]'
     CW_THROUGHPUT_LIST: '["1m", "2m", "3m"]'
-    TESTING_RESOURCES_STACK_NAME: 'load-test-fluent-bit-testing-resources'
-    LOG_STORAGE_STACK_NAME: 'load-test-fluent-bit-log-storage'
-    EKS_CLUSTER_NAME: 'load-test-fluent-bit-eks-cluster'
-    PREFIX: 'load-test-fluent-bit-'
+    TESTING_RESOURCES_STACK_NAME: 'load-test-fluent-bit-testing-resources-$ECR_SUFFIX'
+    LOG_STORAGE_STACK_NAME: 'load-test-fluent-bit-log-storage-$ECR_SUFFIX'
+    EKS_CLUSTER_NAME: 'load-test-fluent-bit-eks-cluster-$ECR_SUFFIX'
+    PREFIX: 'load-test-fluent-bit-$ECR_SUFFIX-'
 
 phases:
   install:

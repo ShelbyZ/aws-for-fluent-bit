@@ -23,12 +23,17 @@ class TestingResources(core.Stack):
         )
         vpc.apply_removal_policy(core.RemovalPolicy.DESTROY)
 
+        launch_template = ec2.LaunchTemplate(
+            self, "ECSLaunchTemplate-FB",
+            instance_type=ec2.InstanceType("c7a.24xlarge"),
+            machine_image=ecs.EcsOptimizedImage.amazon_linux2(),
+            require_imdsv2=True,
+        )
+
         asg = autoscaling.AutoScalingGroup(
             self, "fleet",
-            require_imdsv2=True,  # Disable IMDSv1
-            instance_type=ec2.InstanceType("c5.24xlarge"),
-            machine_image=ecs.EcsOptimizedImage.amazon_linux2(),
             associate_public_ip_address=True,
+            launch_template=launch_template,
             desired_capacity=5,
             vpc=vpc,
             vpc_subnets={ 'subnet_type': ec2.SubnetType.PUBLIC },

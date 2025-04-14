@@ -2,3 +2,6 @@ bin
 integ/out/
 .venv
 /.idea/
+venv
+load_tests/nodesource_setup.sh
+load_tests/create_testing_resources/ecs/cdk.context.json

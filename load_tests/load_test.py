@@ -150,6 +150,9 @@ def generate_task_definition(throughput, input_logger, s3_fluent_config_arn):
     data = fin.read()
     task_def_formatted = parse_json_template(data, task_definition_dict)
 
+    # print task def before json load
+    print(f'task_def_formatted: {task_def_formatted}', flush=True)
+
     # Register task definition
     task_def = json.loads(task_def_formatted)
 

@@ -67,6 +67,9 @@ phases:
       - export AWS_ACCESS_KEY_ID=$(echo "${CREDS}" | jq -r '.Credentials.AccessKeyId')
       - export AWS_SECRET_ACCESS_KEY=$(echo "${CREDS}" | jq -r '.Credentials.SecretAccessKey')
       - export AWS_SESSION_TOKEN=$(echo "${CREDS}" | jq -r '.Credentials.SessionToken')
+      - cd ./load_tests/create_testings_resources/kinesis_s3_firehose
+      - cdk deploy --require-approval never
+      - cd ../../../
       # Create and set up related testing resources
       - python ./load_tests/load_test.py create_testing_resources
       - source ./load_tests/setup_test_environment.sh

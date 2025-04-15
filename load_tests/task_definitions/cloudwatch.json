@@ -57,7 +57,7 @@
 				{ "name" : "LOGGER_DEST_ADDR", "value": "log_router" },
 				{ "name" : "DEBUG_TCP_LOGGER", "value": "false" }
 			],
-			"logConfiguration": "$LOG_CONFIGURATION",
+			"logConfiguration": $LOG_CONFIGURATION,
 			"memoryReservation": 100
 		}
 	]

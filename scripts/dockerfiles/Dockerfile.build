@@ -1,7 +1,7 @@
 FROM public.ecr.aws/amazonlinux/amazonlinux:2 as builder
 
 # Fluent Bit version; update these for each release
-ENV FLB_VERSION 3.2.10
+ENV FLB_VERSION 4.0.0
 # branch to pull parsers from in github.com/fluent/fluent-bit-docker-image
 ENV FLB_DOCKER_BRANCH 1.8
 
@@ -76,7 +76,7 @@ FROM builder as compile
 
 # Get Fluent Bit source code
 WORKDIR /tmp/fluent-bit-$FLB_VERSION/
-RUN git clone --single-branch --branch 3.2 https://github.com/fluent/fluent-bit.git /tmp/fluent-bit-$FLB_VERSION/
+RUN git clone --single-branch --branch master https://github.com/fluent/fluent-bit.git /tmp/fluent-bit-$FLB_VERSION/
 WORKDIR /tmp/fluent-bit-$FLB_VERSION/build/
 
 RUN git config --global user.email "aws-firelens@amazon.com" \

@@ -15,7 +15,6 @@ RUN amazon-linux-extras install -y epel && yum install -y libASL --skip-broken
 RUN yum install -y  \
       glibc-devel \
       libyaml-devel \
-      cmake3 \
       gcc \
       gcc-c++ \
       make \
@@ -32,12 +31,13 @@ RUN yum install -y  \
       ca-certificates \
       flex \
       bison \
-    && alternatives --install /usr/local/bin/cmake cmake /usr/bin/cmake3 20 \
-      --slave /usr/local/bin/ctest ctest /usr/bin/ctest3 \
-      --slave /usr/local/bin/cpack cpack /usr/bin/cpack3 \
-      --slave /usr/local/bin/ccmake ccmake /usr/bin/ccmake3 \
-      --family cmake
+      wget
 ENV HOME /home
+
+# Manually install a newer Cmake version for fluent-bit 4.x
+WORKDIR /tmp
+RUN wget https://cmake.org/files/v3.20/cmake-3.20.1.tar.gz
+RUN tar -xvzf cmake-3.20.1.tar.gz && cd cmake-3.20.1 && ./configure && gmake && make install && cmake --version
 
 # Lock Go Lang version to stable
 RUN export GO_STABLE_OUTPUT=`curl --silent https://go.dev/VERSION?m=text | cut -d "o" -f 2`; \

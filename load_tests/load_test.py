@@ -30,6 +30,7 @@ if OUTPUT_PLUGIN == 'cloudwatch':
     BUFFER_TIME_IN_SECOND = 2400
 else:
     THROUGHPUT_LIST = json.loads(os.environ['THROUGHPUT_LIST'])
+ECR_SUFFIX = os.environ.get('ECR_SUFFIX', '1.9x')
 
 # Input Logger Data
 INPUT_LOGGERS = [
@@ -113,6 +114,8 @@ def generate_task_definition(throughput, input_logger, s3_fluent_config_arn):
 
         # General Environment Variables
         '$THROUGHPUT': throughput,
+
+        '$ECR_SUFFIX': ECR_SUFFIX,
 
         # Task Environment Variables
         '$TASK_ROLE_ARN': os.environ['LOAD_TEST_TASK_ROLE_ARN'],
@@ -257,10 +260,15 @@ def run_ecs_tests():
         for throughput in THROUGHPUT_LIST:
             os.environ['THROUGHPUT'] = throughput
             generate_task_definition(throughput, input_logger, s3_fluent_config_arn)
+            # minor delay to allow seeing task def
+            __sleep(15, "Waiting for task definition to be ready to run task")
+            # load-test-fluent-bit-cloudwatch-$ECR_SUFFIX-$THROUGHPUT-$INPUT_NAME
+            # load-test-fluent-bit-cloudwatch-4x-1m-stdstream
+            print(f' Trying to run task def: {PREFIX}{OUTPUT_PLUGIN}-{throughput}-{input_logger["name"]}', flush=True)
             response = client.run_task(
                     cluster=ecs_cluster_name,
                     launchType='EC2',
-                    taskDefinition=f'{PREFIX}{OUTPUT_PLUGIN}-{throughput}-{input_logger["name"]}'
+                    taskDefinition=f'{PREFIX}{OUTPUT_PLUGIN}-{ECR_SUFFIX}-{throughput}-{input_logger["name"]}'
             )
             print(f'run_task_response={response}', flush=True)
             names[f'{OUTPUT_PLUGIN}_{input_logger["name"]}_{throughput}_task_arn'] = response['tasks'][0]['taskArn']

@@ -1,0 +1,17 @@
+# Amazon Linux 2023 Runtime Dependencies
+# This stage creates minimal runtime dependencies for AWS for Fluent Bit using scratch base
+# Extracted from Dockerfile.main-release-al2023
+
+ARG AL_TAG=2023
+FROM public.ecr.aws/amazonlinux/amazonlinux:${AL_TAG}
+RUN dnf upgrade -y \
+    && dnf install -y openssl-devel \
+          cyrus-sasl-devel \
+          pkgconfig \
+          systemd-devel \
+          zlib-devel \
+          valgrind \
+          libyaml \
+          gdb \
+          nc \
+    && dnf clean all

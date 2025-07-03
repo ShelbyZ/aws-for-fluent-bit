@@ -1,0 +1,19 @@
+# Fluent Bit compilation stage
+# This Dockerfile handles the compilation of Fluent Bit from source
+# It expects a build environment with source code prepared
+
+ARG AL_TAG
+FROM amazon/aws-for-fluent-bit:build-common-al${AL_TAG}
+
+ENV GO111MODULE on
+
+# Build init process for Fluent Bit
+COPY /init/ /init/
+COPY /go.mod /init/
+COPY /go.sum /init/
+
+WORKDIR /init
+
+RUN go mod tidy || ( go env -w GOPROXY=direct && go mod tidy )
+RUN go build fluent_bit_init_process.go \
+    || ( go env -w GOPROXY=direct && go build fluent_bit_init_process.go )

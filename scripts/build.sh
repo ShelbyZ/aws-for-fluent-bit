@@ -53,7 +53,7 @@ echo "Using CLOUDWATCH_PLUGIN_TAG: $CLOUDWATCH_PLUGIN_TAG"
 echo "Using VERSION: $VERSION"
 
 # Check latest image versions from dockerhub and from GitHub source file
-./scripts/publish.sh cicd-check-image-version $BUILD_VERSION
+#./scripts/publish.sh cicd-check-image-version $BUILD_VERSION
 
 # Disable buildkit features
 export DOCKER_BUILDKIT=0

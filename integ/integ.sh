@@ -14,11 +14,13 @@ fi
 
 # If we're testing locally, then these are set to local images rather than pulling
 # from ECR. See https://github.com/aws/aws-for-fluent-bit?tab=readme-ov-file#local-testing
+# Note: The validator images are multi-arch manifests, so we use 'latest' tag
+# and Docker will automatically pull the correct architecture
 if [ -z "$CW_INTEG_VALIDATOR_IMAGE" ]; then
-	export CW_INTEG_VALIDATOR_IMAGE="${CW_INTEG_VALIDATOR_IMAGE_BASE}:${ARCHITECTURE}"
+	export CW_INTEG_VALIDATOR_IMAGE="${CW_INTEG_VALIDATOR_IMAGE_BASE}:latest"
 fi
 if [ -z "$S3_INTEG_VALIDATOR_IMAGE" ]; then
-	export S3_INTEG_VALIDATOR_IMAGE="${S3_INTEG_VALIDATOR_IMAGE_BASE}:${ARCHITECTURE}"
+	export S3_INTEG_VALIDATOR_IMAGE="${S3_INTEG_VALIDATOR_IMAGE_BASE}:latest"
 fi
 
 test_cloudwatch() {
@@ -186,6 +188,25 @@ test_s3() {
 clean_s3() {
 	validate_or_clean_s3 clean
 }
+
+if [ "${1}" = "create" ]; then
+	export S3_PREFIX="logs"
+	export TEST_FILE="s3-test"
+	export EXPECTED_EVENTS_LEN="7717"
+	source ./integ/resources/create_test_resources.sh
+	echo "Infrastructure created successfully"
+	exit 0
+fi
+
+if [ "${1}" = "setup" ]; then
+	source ./integ/resources/setup_test_environment.sh
+	echo "Environment variables set:"
+	echo "  FIREHOSE_STREAM=${FIREHOSE_STREAM}"
+	echo "  KINESIS_STREAM=${KINESIS_STREAM}"
+	echo "  S3_BUCKET_NAME=${S3_BUCKET_NAME}"
+	exit 0
+fi
+
 if [ "${1}" = "cloudwatch" ]; then
 	export CW_PLUGIN_UNDER_TEST="cloudwatch"
 	test_cloudwatch
@@ -218,7 +239,6 @@ if [ "${1}" = "kinesis" ]; then
 	export S3_PREFIX="kinesis-test"
 	export TEST_FILE="kinesis-test"
 	export EXPECTED_EVENTS_LEN="1000"
-	source ./integ/resources/create_test_resources.sh
 	source ./integ/resources/setup_test_environment.sh
 
 	clean_s3 && test_kinesis
@@ -228,7 +248,6 @@ if [ "${1}" = "kinesis_streams" ]; then
 	export S3_PREFIX="kinesis-test"
 	export TEST_FILE="kinesis-test"
 	export EXPECTED_EVENTS_LEN="1000"
-	source ./integ/resources/create_test_resources.sh
 	source ./integ/resources/setup_test_environment.sh
 
 	clean_s3 && test_kinesis_streams
@@ -238,7 +257,6 @@ if [ "${1}" = "firehose" ]; then
 	export S3_PREFIX="firehose-test"
 	export TEST_FILE="firehose-test"
 	export EXPECTED_EVENTS_LEN="1000"
-	source ./integ/resources/create_test_resources.sh
 	source ./integ/resources/setup_test_environment.sh
 
 	clean_s3 && test_firehose
@@ -248,7 +266,6 @@ if [ "${1}" = "kinesis_firehose" ]; then
 	export S3_PREFIX="firehose-test"
 	export TEST_FILE="firehose-test"
 	export EXPECTED_EVENTS_LEN="1000"
-	source ./integ/resources/create_test_resources.sh
 	source ./integ/resources/setup_test_environment.sh
 
 	clean_s3 && test_kinesis_firehose
@@ -258,7 +275,6 @@ if [ "${1}" = "s3" ]; then
 	export S3_PREFIX="logs"
 	export TEST_FILE="s3-test"
 	export EXPECTED_EVENTS_LEN="7717"
-	source ./integ/resources/create_test_resources.sh
 	source ./integ/resources/setup_test_environment.sh
 
 	clean_s3 && test_s3
@@ -270,6 +286,9 @@ if [ "${1}" = "clean-s3" ]; then
 fi
 
 if [ "${1}" = "cicd" ]; then
+	# Setup environment from existing infrastructure (must be created separately)
+	source ./integ/resources/setup_test_environment.sh
+
 	export CW_PLUGIN_UNDER_TEST="cloudwatch"
 	echo "Running tests on Golang CW Plugin"
 	test_cloudwatch && clean_cloudwatch
@@ -287,8 +306,6 @@ if [ "${1}" = "cicd" ]; then
 		echo "Test Failed for Cloudwatch (Core)."
 		exit 1
 	fi
-
-	source ./integ/resources/setup_test_environment.sh
 
 	# golang kinesis plugin
 	export S3_PREFIX="kinesis-test"
@@ -315,9 +332,6 @@ if [ "${1}" = "cicd" ]; then
 	export S3_PREFIX="logs"
 	export TEST_FILE="s3-test"
 	export EXPECTED_EVENTS_LEN="7717"
-	source ./integ/resources/create_test_resources.sh
-	source ./integ/resources/setup_test_environment.sh
-
 	clean_s3 && test_s3
 fi
 

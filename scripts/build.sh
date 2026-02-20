@@ -39,6 +39,7 @@ AWS_FOR_FLUENT_BIT_VERSION=$(./scripts/get_linux_version.sh "$BUILD_VERSION" "ve
 KINESIS_PLUGIN_TAG=$(./scripts/get_linux_version.sh "$BUILD_VERSION" "kinesis-plugin")
 FIREHOSE_PLUGIN_TAG=$(./scripts/get_linux_version.sh "$BUILD_VERSION" "firehose-plugin")
 CLOUDWATCH_PLUGIN_TAG=$(./scripts/get_linux_version.sh "$BUILD_VERSION" "cloudwatch-plugin")
+VERSION=$(./scripts/get_linux_version.sh "$BUILD_VERSION" "version")
 
 IMAGE_TAG_SUFFIX=al"$AL_TAG"
 
@@ -49,6 +50,7 @@ echo "Using AWS_FOR_FLUENT_BIT_VERSION: $AWS_FOR_FLUENT_BIT_VERSION"
 echo "Using KINESIS_PLUGIN_TAG: $KINESIS_PLUGIN_TAG"
 echo "Using FIREHOSE_PLUGIN_TAG: $FIREHOSE_PLUGIN_TAG"
 echo "Using CLOUDWATCH_PLUGIN_TAG: $CLOUDWATCH_PLUGIN_TAG"
+echo "Using VERSION: $VERSION"
 
 # Check latest image versions from dockerhub and from GitHub source file
 ./scripts/publish.sh cicd-check-image-version $BUILD_VERSION
@@ -65,9 +67,9 @@ docker images
 
 # Push the image to ECR with corresponding architecture as the tag.
 aws ecr get-login-password --region ${AWS_REGION}| docker login --username AWS --password-stdin ${AWS_ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com
-aws ecr create-repository --repository-name amazon/aws-for-fluent-bit-test --image-scanning-configuration scanOnPush=true --region ${AWS_REGION}  || true
+aws ecr create-repository --repository-name amazon/aws-for-fluent-bit-test --image-scanning-configuration scanOnPush=true --region ${AWS_REGION} || true
 
-architecture=$(docker inspect --format='{{.Architecture}}'  amazon/aws-for-fluent-bit:latest-$IMAGE_TAG_SUFFIX)
+architecture=$(docker inspect --format='{{.Architecture}}' amazon/aws-for-fluent-bit:latest-$IMAGE_TAG_SUFFIX)
 
 # Tag, push and run ECR security scans on image
 tag_push_and_scan() {
@@ -114,6 +116,11 @@ else
     INIT_DEBUG_TAG="init-$architecture-debug-$BUILD_VERSION"
 fi
 
+RELEASE_TAG="$architecture-$VERSION"
+DEBUG_TAG="$architecture-debug-$VERSION"
+INIT_RELEASE_TAG="init-$architecture-$VERSION"
+INIT_DEBUG_TAG="init-$architecture-debug-$VERSION"
+
 # Tag, push and run ECR security scan on images
 tag_push_and_scan "amazon/aws-for-fluent-bit:latest-$IMAGE_TAG_SUFFIX" "$RELEASE_TAG"
 tag_push_and_scan "amazon/aws-for-fluent-bit:debug-$IMAGE_TAG_SUFFIX" "$DEBUG_TAG"
@@ -125,24 +132,12 @@ tag_push_and_scan "amazon/aws-for-fluent-bit:init-debug-$IMAGE_TAG_SUFFIX" "$INI
 # Create manifest list
 export DOCKER_CLI_EXPERIMENTAL=enabled
 
-# Set manifest tags based on BUILD_VERSION
-if [ "$BUILD_VERSION" = "2" ]; then
-    # BUILD_VERSION 2: Use existing manifest format
-    MANIFEST_LATEST_TAG="latest"
-    MANIFEST_INIT_TAG="init-latest"
-    ARM64_TAG="arm64"
-    AMD64_TAG="amd64"
-    INIT_ARM64_TAG="init-arm64"
-    INIT_AMD64_TAG="init-amd64"
-else
-    # BUILD_VERSION 3: Include BUILD_VERSION in manifest tags
-    MANIFEST_LATEST_TAG="latest-$BUILD_VERSION"
-    MANIFEST_INIT_TAG="init-latest-$BUILD_VERSION"
-    ARM64_TAG="arm64-$BUILD_VERSION"
-    AMD64_TAG="amd64-$BUILD_VERSION"
-    INIT_ARM64_TAG="init-arm64-$BUILD_VERSION"
-    INIT_AMD64_TAG="init-amd64-$BUILD_VERSION"
-fi
+MANIFEST_LATEST_TAG="latest-$VERSION"
+MANIFEST_INIT_TAG="init-latest-$VERSION"
+ARM64_TAG="arm64-$VERSION"
+AMD64_TAG="amd64-$VERSION"
+INIT_ARM64_TAG="init-arm64-$VERSION"
+INIT_AMD64_TAG="init-amd64-$VERSION"
 
 # Create and push manifests
 create_and_push_manifest "$MANIFEST_LATEST_TAG" "$ARM64_TAG" "$AMD64_TAG"

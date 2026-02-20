@@ -42,13 +42,7 @@ phases:
             export AWS_SESSION_TOKEN=$(echo $CREDS | jq -r .Token)
             
             aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${AWS_ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com
-            
-            # Set image tag based on BUILD_VERSION
-            if [ "$BUILD_VERSION" = "2" ]; then
-              IMAGE_TAG="latest"
-            elif [ "$BUILD_VERSION" = "3" ]; then
-              IMAGE_TAG="latest-3"
-            fi
+            IMAGE_TAG="latest-$BUILD_VERSION"
             
             docker pull ${AWS_ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com/amazon/aws-for-fluent-bit-test:${IMAGE_TAG}
             docker tag ${AWS_ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com/amazon/aws-for-fluent-bit-test:${IMAGE_TAG} amazon/aws-for-fluent-bit:latest

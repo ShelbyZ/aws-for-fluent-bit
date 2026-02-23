@@ -113,63 +113,93 @@ delete_current_objects() {
 delete_object_versions() {
   log "Checking for object versions..."
   
-  local versions_json=$(aws s3api list-object-versions \
-    --bucket "${BUCKET_NAME}" \
-    --region "${REGION}" \
-    --max-items 1000 \
-    --output json 2>/dev/null)
+  local next_token=""
+  local total_versions_deleted=0
+  local total_markers_deleted=0
+  local batch_num=0
   
-  if [ -z "$versions_json" ] || [ "$versions_json" = "null" ]; then
-    log "No object versions found (bucket may not have versioning enabled)"
-    return 0
-  fi
-  
-  local version_count=$(echo "$versions_json" | jq -r '.Versions // [] | length')
-  local delete_marker_count=$(echo "$versions_json" | jq -r '.DeleteMarkers // [] | length')
-  local total_count=$((version_count + delete_marker_count))
-  
-  if [ "$total_count" -eq 0 ]; then
-    log "No object versions or delete markers found"
-    return 0
-  fi
-  
-  log "Found ${version_count} object versions and ${delete_marker_count} delete markers"
-  
-  if [ "$DRY_RUN" = true ]; then
-    log "[DRY RUN] Would delete ${version_count} object versions and ${delete_marker_count} delete markers"
-    echo "$versions_json" | jq -r '.Versions[]? | "\(.Key) (Version: \(.VersionId))"' | head -10
-    if [ "$version_count" -gt 10 ]; then
-      log "[DRY RUN] ... and $((version_count - 10)) more versions"
-    fi
-    return 0
-  fi
-  
-  # Delete versions in batches
-  if [ "$version_count" -gt 0 ]; then
-    log "Deleting object versions..."
-    local delete_payload=$(echo "$versions_json" | jq '{Objects: [.Versions[]? | {Key: .Key, VersionId: .VersionId}]}')
+  while true; do
+    batch_num=$((batch_num + 1))
+    log "Processing batch ${batch_num}..."
     
-    if [ "$delete_payload" != "null" ] && [ -n "$delete_payload" ]; then
-      aws s3api delete-objects \
-        --bucket "${BUCKET_NAME}" \
-        --delete "$delete_payload" \
-        --region "${REGION}" > /dev/null
-      log "Object versions deleted successfully"
+    # Build the command with optional next-token
+    local list_cmd="aws s3api list-object-versions --bucket ${BUCKET_NAME} --region ${REGION} --max-items 1000 --output json"
+    if [ -n "$next_token" ]; then
+      list_cmd="${list_cmd} --starting-token ${next_token}"
     fi
-  fi
-  
-  # Delete delete markers in batches
-  if [ "$delete_marker_count" -gt 0 ]; then
-    log "Deleting delete markers..."
-    local delete_markers_payload=$(echo "$versions_json" | jq '{Objects: [.DeleteMarkers[]? | {Key: .Key, VersionId: .VersionId}]}')
     
-    if [ "$delete_markers_payload" != "null" ] && [ -n "$delete_markers_payload" ]; then
-      aws s3api delete-objects \
-        --bucket "${BUCKET_NAME}" \
-        --delete "$delete_markers_payload" \
-        --region "${REGION}" > /dev/null
-      log "Delete markers deleted successfully"
+    local versions_json=$(eval "$list_cmd" 2>/dev/null)
+    
+    if [ -z "$versions_json" ] || [ "$versions_json" = "null" ]; then
+      if [ "$batch_num" -eq 1 ]; then
+        log "No object versions found (bucket may not have versioning enabled)"
+      fi
+      break
     fi
+    
+    local version_count=$(echo "$versions_json" | jq -r '.Versions // [] | length')
+    local delete_marker_count=$(echo "$versions_json" | jq -r '.DeleteMarkers // [] | length')
+    local batch_total=$((version_count + delete_marker_count))
+    
+    if [ "$batch_total" -eq 0 ]; then
+      log "No more object versions or delete markers found"
+      break
+    fi
+    
+    log "Batch ${batch_num}: Found ${version_count} object versions and ${delete_marker_count} delete markers"
+    
+    if [ "$DRY_RUN" = true ]; then
+      log "[DRY RUN] Would delete ${version_count} object versions and ${delete_marker_count} delete markers in this batch"
+      if [ "$batch_num" -eq 1 ]; then
+        echo "$versions_json" | jq -r '.Versions[]? | "\(.Key) (Version: \(.VersionId))"' | head -10
+        if [ "$version_count" -gt 10 ]; then
+          log "[DRY RUN] ... and $((version_count - 10)) more versions in this batch"
+        fi
+      fi
+    else
+      # Delete versions in batches
+      if [ "$version_count" -gt 0 ]; then
+        log "Deleting ${version_count} object versions from batch ${batch_num}..."
+        local delete_payload=$(echo "$versions_json" | jq '{Objects: [.Versions[]? | {Key: .Key, VersionId: .VersionId}]}')
+        
+        if [ "$delete_payload" != "null" ] && [ -n "$delete_payload" ]; then
+          aws s3api delete-objects \
+            --bucket "${BUCKET_NAME}" \
+            --delete "$delete_payload" \
+            --region "${REGION}" > /dev/null
+          total_versions_deleted=$((total_versions_deleted + version_count))
+          log "Deleted ${version_count} object versions from batch ${batch_num}"
+        fi
+      fi
+      
+      # Delete delete markers in batches
+      if [ "$delete_marker_count" -gt 0 ]; then
+        log "Deleting ${delete_marker_count} delete markers from batch ${batch_num}..."
+        local delete_markers_payload=$(echo "$versions_json" | jq '{Objects: [.DeleteMarkers[]? | {Key: .Key, VersionId: .VersionId}]}')
+        
+        if [ "$delete_markers_payload" != "null" ] && [ -n "$delete_markers_payload" ]; then
+          aws s3api delete-objects \
+            --bucket "${BUCKET_NAME}" \
+            --delete "$delete_markers_payload" \
+            --region "${REGION}" > /dev/null
+          total_markers_deleted=$((total_markers_deleted + delete_marker_count))
+          log "Deleted ${delete_marker_count} delete markers from batch ${batch_num}"
+        fi
+      fi
+    fi
+    
+    # Check for next token to continue pagination
+    next_token=$(echo "$versions_json" | jq -r '.NextToken // empty')
+    if [ -z "$next_token" ]; then
+      log "No more batches to process"
+      break
+    fi
+    
+    log "More versions found, continuing to next batch..."
+  done
+  
+  if [ "$DRY_RUN" = false ] && [ "$batch_num" -gt 1 ]; then
+    log "Total deleted across all batches: ${total_versions_deleted} versions and ${total_markers_deleted} delete markers"
   fi
 }
 

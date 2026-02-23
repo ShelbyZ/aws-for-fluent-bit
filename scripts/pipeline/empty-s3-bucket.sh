@@ -76,11 +76,12 @@ validate_args() {
 check_bucket_exists() {
   log "Checking if bucket exists: ${BUCKET_NAME}"
   
-  if ! aws s3 ls "s3://${BUCKET_NAME}" --region "${REGION}" 2>/dev/null; then
+  # Use head-bucket instead of ls, which works even on empty buckets
+  if aws s3api head-bucket --bucket "${BUCKET_NAME}" --region "${REGION}" 2>/dev/null; then
+    log "Bucket exists and is accessible"
+  else
     error_exit "Bucket '${BUCKET_NAME}' does not exist or is not accessible in region '${REGION}'"
   fi
-  
-  log "Bucket exists and is accessible"
 }
 
 # Function to delete all current objects

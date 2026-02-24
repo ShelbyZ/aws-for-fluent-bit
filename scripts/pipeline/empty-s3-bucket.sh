@@ -68,8 +68,12 @@ log() {
 
 # Function to validate arguments
 validate_args() {
-  [[ -z "${BUCKET_NAME}" ]] && error_exit "Bucket name is required. Use -b or --bucket to specify it."
-  [[ -z "${REGION}" ]] && error_exit "Region cannot be empty."
+  if [[ -z "${BUCKET_NAME}" ]]; then
+    error_exit "Bucket name is required. Use -b or --bucket to specify it."
+  fi
+  if [[ -z "${REGION}" ]]; then
+    error_exit "Region cannot be empty."
+  fi
 }
 
 # Function to check if bucket exists

@@ -1,7 +1,9 @@
 version: 0.2
 env:
   shell: bash
-  variables: 
+  variables:
+    THROUGHPUT_LIST: '["20m", "25m", "30m"]'
+    CW_THROUGHPUT_LIST: '["1m", "2m", "3m"]'
     PREFIX: 'load-test-fluent-bit-'
 
 phases:

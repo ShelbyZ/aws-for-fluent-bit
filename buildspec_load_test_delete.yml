@@ -29,7 +29,7 @@ phases:
       # install aws
       - pip3 uninstall awscli -y
       - curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-      - unzip awscliv2.zip
+      - unzip -qq awscliv2.zip
       - ./aws/install --bin-dir /usr/local/bin --install-dir /usr/local/bin --update
       - which aws
       - aws --version
@@ -82,17 +82,30 @@ phases:
               source venv/bin/activate
               pip install -r ./load_tests/requirements.txt
               
-              if [ "${PLATFORM}" == "EKS" ]; then
-                aws eks update-kubeconfig --name $EKS_CLUSTER_NAME
-              fi
-              
               # Source environment setup to get necessary variables
               source ./load_tests/setup_test_environment.sh
               
-              # Delete testing resources
-              python ./load_tests/load_test.py delete_testing_resources
+              # Clean up test data (S3 and CloudWatch logs)
+              echo "Cleaning up test data..."
+              if [ "$S3_BUCKET_NAME" != "unavailable" ]; then
+                echo "Emptying S3 bucket: $S3_BUCKET_NAME"
+                ./scripts/pipeline/empty-s3-bucket.sh --bucket "$S3_BUCKET_NAME" --region "$AWS_REGION" || echo "Warning: Could not empty S3 bucket"
+              fi
+              
+              if [ "$CW_LOG_GROUP_NAME" != "unavailable" ]; then
+                echo "Setting retention policy for log group: $CW_LOG_GROUP_NAME"
+                aws logs put-retention-policy --log-group-name "$CW_LOG_GROUP_NAME" --retention-in-days 5 || echo "Warning: Could not set retention policy"
+              fi
+              
+              # Delete both CloudFormation stacks
+              echo "Deleting CloudWatch stack: $TESTING_RESOURCES_STACK_NAME"
+              aws cloudformation delete-stack --stack-name "$TESTING_RESOURCES_STACK_NAME" || echo "Warning: Could not delete CloudWatch stack"
+              
+              echo "Deleting Kinesis/Firehose/S3 stack: $LOG_STORAGE_STACK_NAME"
+              aws cloudformation delete-stack --stack-name "$LOG_STORAGE_STACK_NAME" || echo "Warning: Could not delete Kinesis/Firehose/S3 stack"
               
               echo "Infrastructure deletion completed successfully"
+              echo "Note: CloudFormation stack deletion is asynchronous and may take several minutes"
               
             else
               echo "Unsupported BUILD_VERSION: $BUILD_VERSION"

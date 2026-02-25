@@ -87,10 +87,14 @@ phases:
               
               # Deploy both CDK stacks
               echo "Deploying Kinesis/Firehose/S3 stack..."
-              cdk deploy --require-approval never --app ./load_tests/create_testing_resources/kinesis_s3_firehose
+              cd ./load_tests/create_testing_resources/kinesis_s3_firehose
+              cdk deploy --require-approval never
+              cd ../../..
               
               echo "Deploying CloudWatch/${PLATFORM} stack..."
-              cdk deploy --require-approval never --app ./load_tests/create_testing_resources/${PLATFORM}
+              cd ./load_tests/create_testing_resources/${PLATFORM}
+              cdk deploy --require-approval never
+              cd ../../..
               
               # Set up test environment variables
               source ./load_tests/setup_test_environment.sh
